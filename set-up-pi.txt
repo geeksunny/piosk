@@ -1,0 +1,61 @@
+# Outline for setting up a Raspbian Lite system for touchscreen kiosk use.
+---
+## Can this be converted into a setup script?
+
+## Should the autologin / autostart stuff be turned into a service for systemd to launch?
+
+## Advantage of using the autostart x via .bash_profile means we don't have to install "Unclutter" to disable mouse cursor.
+
+
+1. Set up autologin for CLI ---
+> sudo raspi-config
+From the menu select:
+
+Boot Options
+  > Desktop CLI
+    > Console Autologin (YES)
+
+
+2. install software ---
+> sudo apt-get update
+> sudo apt-get -y upgrade
+> sudo apt-get -y install --no-install-recommends xserver-xorg x11-xserver-utils xinit openbox xscreensaver chromium-browser python3-pip
+
+
+3. copy xscreensaver config file ---
+[get ~/.xscreensaver file contents, trim down, copy to this project]
+
+
+4. Fill in contents to /etc/xdg/openbox/autostart ---
+# Start XScreenSaver
+xscreensaver -nosplash &
+
+# Remove exit errors from the config files that could trigger a warning
+sed -i 's/"exited_cleanly":false/"exited_cleanly":true/' ~/.config/chromium/'Local State'
+sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]\+"/"exit_type":"Normal"/' ~/.config/chromium/Default/Preferences
+
+# Run Chromium in kiosk mode
+chromium-browser  --noerrdialogs --disable-infobars --check-for-update-interval=31536000 --kiosk $KIOSK_URL
+
+
+5. Fill in contents to /etc/xdg/openbox/environment [change url if needed] ---
+export KIOSK_URL=http://homeassistant.local:8123/
+
+
+6. Autostart X, disable mouse cursor. Fill in contents to ~/.bash_profile ---
+[[ -z $DISPLAY && $XDG_VTNR -eq 1 ]] && startx -- -nocursor
+
+
+
+7. Activate .bash_profile file ---
+> source ~/.bash_profile
+
+
+
+8. Add udev rule for backlight control
+> echo 'SUBSYSTEM=="backlight",RUN+="/bin/chmod 666 /sys/class/backlight/%k/brightness /sys/class/backlight/%k/bl_power"' | sudo tee -a /etc/udev/rules.d/backlight-permissions.rules
+
+
+
+final. Reboot ---
+> sudo reboot

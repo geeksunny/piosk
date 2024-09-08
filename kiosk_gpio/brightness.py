@@ -30,6 +30,14 @@ class Backlight(StrEnum):
     RPI5_0 = "4-0045"
     RPI5_1 = "6-0045"
 
+    @classmethod
+    def detect_backlight(cls):
+        items : list[Backlight] = list(map(lambda c: c.value, cls))
+        for item in items:
+            if item.path.exists():
+                return item
+        raise RuntimeError("Could not determine backlight type.")
+
     @property
     def path(self) -> Path:
         return Path('/sys/class/backlight/', str(self.value))
@@ -64,7 +72,7 @@ class BrightnessControlThread(LedInstructionProvidingThread):
     def __init__(self):
         super(BrightnessControlThread, self).__init__()
         self._gpio_lightsensor = LightSensor(CONFIG['PIN_LIGHTSENSOR'])
-        self._
+        self._backlight = Backlight.detect_backlight()
 
     def run(self):
         while True:

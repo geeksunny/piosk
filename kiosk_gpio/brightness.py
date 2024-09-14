@@ -31,6 +31,10 @@ class Backlight(StrEnum):
     RPI5_0 = "4-0045"
     RPI5_1 = "6-0045"
 
+    def __init__(self):
+        super().__init__()
+        self._current_brightness: int = -1
+
     @classmethod
     def detect_backlight(cls):
         items: list[Backlight] = list(map(lambda c: c.value, cls))
@@ -52,8 +56,10 @@ class Backlight(StrEnum):
         return int(_read_value(self.brightness))
 
     @brightness_value.setter
-    def brightness_value(self, value):
-        _write_value(self.brightness, value)
+    def brightness_value(self, value: int):
+        if isinstance(value, int) and 0 <= value <= 255 and value != self._current_brightness:
+            _write_value(self.brightness, value)
+            self._current_brightness = value
 
     @property
     def power(self) -> Path:
@@ -68,6 +74,7 @@ class Backlight(StrEnum):
         _write_value(self.power, value)
 
 
+_BACKLIGHT = Backlight.detect_backlight()
 GPIO_LIGHTSENSOR = LightSensor(CONFIG['PIN_LIGHTSENSOR'])
 
 
@@ -76,17 +83,15 @@ class AutoBrightnessThread(LedInstructionProvidingThread):
     def __init__(self, event: Event):
         super(AutoBrightnessThread, self).__init__()
         self._event = event
-        self._backlight = Backlight.detect_backlight()
-        self._brightness_value = self._backlight.brightness_value
-
-        self._sensor_reading = 0.0
+        self._brightness_value = _BACKLIGHT.brightness_value
+        self._sensor_reading = -1.0
         self._auto_range = CONFIG['brightness']['AUTO_MAXIMUM'] - CONFIG['brightness']['AUTO_MINIMUM']
         self._auto_minimum = CONFIG['brightness']['AUTO_MINIMUM']
         self._auto_step = self._auto_range / CONFIG['brightness']['AUTO_STEP_COUNT']
 
     def _set_brightness(self, brightness_value: float):
         if brightness_value is not None and self._brightness_value != brightness_value:
-            self._brightness_value = self._backlight.brightness_value = brightness_value
+            self._brightness_value = _BACKLIGHT.brightness_value = brightness_value
 
     def get_auto_brightness(self) -> float | None:
         sensor_reading = GPIO_LIGHTSENSOR.value
@@ -94,9 +99,9 @@ class AutoBrightnessThread(LedInstructionProvidingThread):
             return None
         self._sensor_reading = sensor_reading
         new_brightness = self._auto_range * sensor_reading
-        # Adjust value to the nearest multiple of `self._auto_step.
+        # Adjust value to the nearest multiple of `self._auto_step.`
         new_brightness = self._auto_step * round(new_brightness / self._auto_step)
-        return new_brightness + self._auto_minimum
+        return round(new_brightness + self._auto_minimum)
 
     def run(self):
         while True:
@@ -105,18 +110,30 @@ class AutoBrightnessThread(LedInstructionProvidingThread):
             if self._event.is_set() is True:
                 break
 
+        # TODO: auto brightness, monitor lightsensor reading and change backlight level accordingly.
+        # TODO: manual brightness, cycle through steps
+        # TODO: Double click button to swap between modes.
+        #  manual mode: Fade LED down with brightness down steps. step on each click.
+        #    Step count and values can be declared in config file.
+        #  auto mode: Quick pulse of LED when activated.
+        #  mode / value change: LED turns on to the representing state for 1 second.
+        #    (customized in config?)
 
 
-THREAD_AUTO_BRIGHTNESS: AutoBrightnessThread = AutoBrightnessThread()
-THREAD_EVENT: Event = Event()
+_THREAD_AUTO_BRIGHTNESS: AutoBrightnessThread = AutoBrightnessThread()
+_THREAD_EVENT: Event = Event()
 
 
 def start_auto_brightness():
-    global THREAD_AUTO_BRIGHTNESS
-    if THREAD_AUTO_BRIGHTNESS is None or not THREAD_AUTO_BRIGHTNESS.is_alive():
-        THREAD_AUTO_BRIGHTNESS = AutoBrightnessThread(THREAD_EVENT)
-        THREAD_AUTO_BRIGHTNESS.start()
+    global _THREAD_AUTO_BRIGHTNESS
+    if _THREAD_AUTO_BRIGHTNESS is None or not _THREAD_AUTO_BRIGHTNESS.is_alive():
+        _THREAD_AUTO_BRIGHTNESS = AutoBrightnessThread(_THREAD_EVENT)
+        _THREAD_AUTO_BRIGHTNESS.start()
 
 
 def stop_auto_brightness():
-    THREAD_EVENT.set()
+    _THREAD_EVENT.set()
+
+
+def set_manual_brightness(val: int):
+    _BACKLIGHT.brightness_value = val

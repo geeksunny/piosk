@@ -1,6 +1,7 @@
 from enum import StrEnum, Enum
 from pathlib import Path
-from threading import Event
+from threading import Event, Lock
+from typing import Callable
 
 from gpiozero import LightSensor
 
@@ -75,6 +76,7 @@ class Backlight(StrEnum):
 
 
 _BACKLIGHT = Backlight.detect_backlight()
+_BACKLIGHT_LOCK = Lock()
 GPIO_LIGHTSENSOR = LightSensor(CONFIG['PIN_LIGHTSENSOR'])
 
 
@@ -83,7 +85,8 @@ class AutoBrightnessThread(LedInstructionProvidingThread):
     def __init__(self, event: Event):
         super(AutoBrightnessThread, self).__init__()
         self._event = event
-        self._brightness_value = _BACKLIGHT.brightness_value
+        with _BACKLIGHT_LOCK:
+            self._brightness_value = _BACKLIGHT.brightness_value
         self._sensor_reading = -1.0
         self._auto_range = CONFIG['brightness']['AUTO_MAXIMUM'] - CONFIG['brightness']['AUTO_MINIMUM']
         self._auto_minimum = CONFIG['brightness']['AUTO_MINIMUM']
@@ -91,7 +94,8 @@ class AutoBrightnessThread(LedInstructionProvidingThread):
 
     def _set_brightness(self, brightness_value: float):
         if brightness_value is not None and self._brightness_value != brightness_value:
-            self._brightness_value = _BACKLIGHT.brightness_value = brightness_value
+            with _BACKLIGHT_LOCK:
+                self._brightness_value = _BACKLIGHT.brightness_value = brightness_value
 
     def get_auto_brightness(self) -> float | None:
         sensor_reading = GPIO_LIGHTSENSOR.value
@@ -135,5 +139,6 @@ def stop_auto_brightness():
     _THREAD_EVENT.set()
 
 
-def set_manual_brightness(val: int):
-    _BACKLIGHT.brightness_value = val
+def set_manual_brightness(val: int, smooth: bool, ease_func: Callable[[int], float]):
+    with _BACKLIGHT_LOCK:
+        _BACKLIGHT.brightness_value = val

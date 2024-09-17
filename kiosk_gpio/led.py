@@ -2,13 +2,11 @@ from dataclasses import dataclass
 from itertools import cycle, chain, repeat
 from threading import Thread
 
+from easing_functions.easing import EasingBase, LinearInOut
 from gpiozero import PWMLED
 from gpiozero.threads import GPIOThread
 
 from .config import CONFIG
-
-# TODO: Move LED Thread here, refactor names to use all caps for LED
-# TODO: Implement the SequencedPWMLED in the LED thread
 
 
 @dataclass
@@ -17,12 +15,11 @@ class BlinkSequenceEvent:
     duration: float = 0.0
     fade_time: float = 0.0
     fps: int = 25
+    easing: type[EasingBase] = LinearInOut
 
 
 class SequencedPWMLED(PWMLED):
 
-    # TODO: Implement a method like PWMOutputDevice.blink() that calls this on the thread.
-    #  (Use GPIOThread like the .blink() method does)
     def sequence(self, events: tuple[BlinkSequenceEvent, ...] | BlinkSequenceEvent,
                  initial_value: float | None = None, n: int | None = 1, background: bool = True):
         """
@@ -68,15 +65,11 @@ class SequencedPWMLED(PWMLED):
         for event in events:
             value_steps = []
             if event.fade_time > 0 and prev_value != event.value:
-                decreasing = event.value < prev_value
-                low_value, high_value = (i for i in sorted((prev_value, event.value)))
                 frame_count = int(event.fps * event.fade_time)
                 delay = 1 / event.fps
-                step = ((high_value - low_value) / frame_count)
-                if decreasing:
-                    step = -step
+                easing = event.easing(prev_value, event.value, frame_count)
                 for i in range(frame_count):
-                    value = prev_value + (step * i)
+                    value = easing(i)
                     value_steps.append(value)
             sequence.append((delay, value_steps))
             sequence.append((event.duration, (event.value,)))

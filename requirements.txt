@@ -1,2 +1,3 @@
+easing-functions==1.0.4
 gpiozero==2.0.1
 tomli==2.0.1

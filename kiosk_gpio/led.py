@@ -206,6 +206,11 @@ GPIO_LED = SequencedPWMLED(CONFIG['PIN_PWM_LED'])
 
 class LedInstructionProvidingThread(Thread):
 
+
+    def _led_sequence(self, events: tuple[BlinkSequenceEvent, ...] | BlinkSequenceEvent,
+                      initial_value: float | None = None, n: int | None = 1):
+        GPIO_LED.sequence(events, initial_value, n, background=True)
+
     def _led_on(self, on_time: float | None = None, fade_time: float = 0, value: float = CONFIG['led']['LED_MAX']):
         n = 1 if on_time > 0 else None
         GPIO_LED.sequence(BlinkSequenceEvent(value, on_time, fade_time), n=n, background=True)

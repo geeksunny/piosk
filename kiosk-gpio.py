@@ -2,13 +2,13 @@
 import os
 import subprocess
 import sys
-import time
 from datetime import datetime
 from enum import Enum
 from threading import Thread
 
-from gpiozero import Button, MotionSensor
+from gpiozero import MotionSensor
 
+from kiosk_gpio.button import ButtonThread
 from kiosk_gpio.config import CONFIG
 from kiosk_gpio.led import LedInstructionProvidingThread
 
@@ -43,44 +43,6 @@ class ScreensaverThread(LedInstructionProvidingThread):
         return ScreensaverEvent.DEACTIVATED if text.find("UNBLANK") > -1 \
             else ScreensaverEvent.ACTIVATED if text.find("BLANK") > -1 \
             else ScreensaverEvent.NONE
-
-
-class ButtonThread(LedInstructionProvidingThread):
-
-    def __init__(self):
-        super(ButtonThread, self).__init__()
-        self._gpio_button = Button(CONFIG['PIN_BUTTON'])
-        self._is_pressed = False
-        self._last_state_change = None
-        self._is_led_active = False
-
-    def _set_state(self, new_value: bool):
-        if self._is_pressed != new_value:
-            self._is_pressed = new_value
-            self._last_state_change = time.time()
-
-    def _time_held(self):
-        return time.time() - self._last_state_change
-
-    def run(self):
-        while True:
-            if self._is_pressed is False:
-                # Check for new press
-                if self._gpio_button.is_pressed is True:
-                    self._set_state(True)
-            else:  # if self.is_pressed is True:
-                if self._gpio_button.is_pressed is False:
-                    # todo: Turn LED off
-                    self._set_state(False)
-                elif self._is_led_active is not True:
-                    if self._time_held() >= CONFIG['button']['MIN_HOLD_TIME_SECONDS']:
-                        # todo: trigger LED pulsing
-                        pass
-                else:
-                    if self._time_held() >= CONFIG['button']['MAX_HOLD_TIME_SECONDS']:
-                        # todo: Stop LED pulsing, set to solid ON.
-                        # todo: trigger shutdown menu app (define path in config file)
-                        pass
 
 
 class MotionSensorThread(Thread):

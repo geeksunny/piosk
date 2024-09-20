@@ -1,8 +1,9 @@
+import time
 from enum import StrEnum, Enum
 from pathlib import Path
 from threading import Event, Lock
-from typing import Callable
 
+from easing_functions.easing import EasingBase, LinearInOut
 from gpiozero import LightSensor
 
 from kiosk_gpio.config import CONFIG
@@ -53,7 +54,9 @@ class Backlight(StrEnum):
 
     @property
     def brightness_value(self) -> int:
-        return int(_read_value(self.brightness))
+        global __current_brightness
+        __current_brightness = int(_read_value(self.brightness))
+        return __current_brightness
 
     @brightness_value.setter
     def brightness_value(self, value: int):
@@ -61,6 +64,19 @@ class Backlight(StrEnum):
         if isinstance(value, int) and 0 <= value <= 255 and value != __current_brightness:
             _write_value(self.brightness, value)
             __current_brightness = value
+
+    def set_brightness_smoothed(self, value: int, ease_cls: type[EasingBase]):
+        # TODO: Should this have a background option?
+        current_value = self.brightness_value
+        easing = ease_cls(current_value, value, CONFIG['brightness']['SMOOTH_DURATION_SECONDS'])
+        delay = CONFIG['brightness']['SMOOTH_DURATION_SECONDS'] / CONFIG['brightness']['SMOOTH_FPS']
+        frame_count = CONFIG['brightness']['SMOOTH_DURATION_SECONDS'] * CONFIG['brightness']['SMOOTH_FPS']
+        global __current_brightness
+        for i in range(frame_count):
+            val = easing(i)
+            if __current_brightness != val:
+                self.brightness_value = val
+            time.sleep(delay)
 
     @property
     def power(self) -> Path:
@@ -88,6 +104,7 @@ class AutoBrightnessThread(LedInstructionProvidingThread):
         with _BACKLIGHT_LOCK:
             self._brightness_value = _BACKLIGHT.brightness_value
         self._sensor_reading = -1.0
+        self._smooth = CONFIG['brightness']['SMOOTH']
         self._auto_range = CONFIG['brightness']['AUTO_MAXIMUM'] - CONFIG['brightness']['AUTO_MINIMUM']
         self._auto_minimum = CONFIG['brightness']['AUTO_MINIMUM']
         self._auto_step = self._auto_range / CONFIG['brightness']['AUTO_STEP_COUNT']
@@ -95,6 +112,10 @@ class AutoBrightnessThread(LedInstructionProvidingThread):
     def _set_brightness(self, brightness_value: float):
         if brightness_value is not None and self._brightness_value != brightness_value:
             with _BACKLIGHT_LOCK:
+                self._brightness_value = int(round(brightness_value))
+                if self._smooth is True:
+                    # TODO: Make the easing method configurable
+                    _BACKLIGHT.set_brightness_smoothed(self._brightness_value, LinearInOut)
                 self._brightness_value = _BACKLIGHT.brightness_value = brightness_value
 
     def get_auto_brightness(self) -> float | None:
@@ -139,6 +160,9 @@ def stop_auto_brightness():
     _THREAD_EVENT.set()
 
 
-def set_manual_brightness(val: int, smooth: bool, ease_func: Callable[[int], float]):
+def set_manual_brightness(val: int, smooth: bool = False, ease_cls: type[EasingBase] = LinearInOut):
     with _BACKLIGHT_LOCK:
-        _BACKLIGHT.brightness_value = val
+        if smooth is True:
+                _BACKLIGHT.set_brightness_smoothed(val, ease_cls)
+        else:
+            _BACKLIGHT.brightness_value = val

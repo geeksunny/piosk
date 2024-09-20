@@ -26,19 +26,18 @@ def _write_value(path: Path, value):
         f.write(str(value))
 
 
+__current_brightness = -1
+
+
 class Backlight(StrEnum):
     DEFAULT = "rpi_backlight"
     RPI_0 = "10-0045"
     RPI5_0 = "4-0045"
     RPI5_1 = "6-0045"
 
-    def __init__(self):
-        super().__init__()
-        self._current_brightness: int = -1
-
     @classmethod
     def detect_backlight(cls):
-        items: list[Backlight] = list(map(lambda c: c.value, cls))
+        items: list[Backlight] = list(map(lambda c: c, cls))
         for item in items:
             if item.path.exists():
                 return item
@@ -58,9 +57,10 @@ class Backlight(StrEnum):
 
     @brightness_value.setter
     def brightness_value(self, value: int):
-        if isinstance(value, int) and 0 <= value <= 255 and value != self._current_brightness:
+        global __current_brightness
+        if isinstance(value, int) and 0 <= value <= 255 and value != __current_brightness:
             _write_value(self.brightness, value)
-            self._current_brightness = value
+            __current_brightness = value
 
     @property
     def power(self) -> Path:
@@ -124,8 +124,8 @@ class AutoBrightnessThread(LedInstructionProvidingThread):
         #    (customized in config?)
 
 
-_THREAD_AUTO_BRIGHTNESS: AutoBrightnessThread = AutoBrightnessThread()
 _THREAD_EVENT: Event = Event()
+_THREAD_AUTO_BRIGHTNESS: AutoBrightnessThread = AutoBrightnessThread(_THREAD_EVENT)
 
 
 def start_auto_brightness():

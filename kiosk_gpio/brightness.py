@@ -166,3 +166,19 @@ def set_manual_brightness(val: int, smooth: bool = False, ease_cls: type[EasingB
                 _BACKLIGHT.set_brightness_smoothed(val, ease_cls)
         else:
             _BACKLIGHT.brightness_value = val
+
+
+__manual_step_index: int = 0
+__manual_steps: list[int] = CONFIG['brightness']['MANUAL_STEPS']
+
+
+def set_next_manual_step(smooth: bool = False):
+    global __manual_step_index
+    with _BACKLIGHT_LOCK:
+        __manual_step_index += 1
+        if __manual_step_index >= len(__manual_steps):
+            __manual_step_index = 0
+        if smooth is True:
+            _BACKLIGHT.set_brightness_smoothed(__manual_steps[__manual_step_index], LinearInOut)
+        else:
+            _BACKLIGHT.brightness_value = __manual_steps[__manual_step_index]

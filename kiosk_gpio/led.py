@@ -219,6 +219,15 @@ class LedInstructionProvidingThread(Thread):
         n = 1 if off_time > 0 else None
         GPIO_LED.sequence(BlinkSequenceEvent(0, off_time, fade_time), n=n, background=True)
 
+    def _led_blink(self, on_time: float | None = None, off_time: float | None = None,
+                   led_on_value: float = CONFIG['led']['LED_MAX'], led_off_value: float = 0.0,
+                   n: int = None):
+        events = (
+            BlinkSequenceEvent(led_on_value, on_time),
+            BlinkSequenceEvent(led_off_value, off_time)
+        )
+        GPIO_LED.sequence(events, n=n, background=True)
+
     def _led_pulse(self, on_time: float | None = None, off_time: float | None = None,
                    fade_time_on: float = 0, fade_time_off: float = 0,
                    high_value: float = CONFIG['led']['LED_MAX'], low_value: float = CONFIG['led']['LED_MIN'],
@@ -228,5 +237,3 @@ class LedInstructionProvidingThread(Thread):
             BlinkSequenceEvent(low_value, off_time, fade_time_off)
         )
         GPIO_LED.sequence(events, n=n, background=True)
-
-    # todo: Implement blink and toggle operations

@@ -13,8 +13,6 @@ from kiosk_gpio.led import LedInstructionProvidingThread
 class Brightness(Enum):
     ON = 0
     OFF = 1
-    MAX = CONFIG['brightness']['AUTO_MAXIMUM']
-    MIN = CONFIG['brightness']['AUTO_MINIMUM']
 
 
 def _read_value(path: Path):
@@ -166,6 +164,11 @@ def set_manual_brightness(val: int, smooth: bool = False, ease_cls: type[EasingB
                 _BACKLIGHT.set_brightness_smoothed(val, ease_cls)
         else:
             _BACKLIGHT.brightness_value = val
+
+
+def set_screen_power(state: Brightness):
+    with _BACKLIGHT_LOCK:
+        _BACKLIGHT.power_value = state
 
 
 __manual_step_index: int = 0

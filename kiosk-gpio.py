@@ -1,48 +1,13 @@
 #!/usr/bin/env python
 import os
-import subprocess
 import sys
-from datetime import datetime
-from enum import Enum
 from threading import Thread
 
 from gpiozero import MotionSensor
 
 from kiosk_gpio.button import ButtonThread
 from kiosk_gpio.config import CONFIG
-from kiosk_gpio.led import LedInstructionProvidingThread
-
-
-def log(message: str):
-    print(f'{datetime.timestamp(datetime.now())} :: {message}')
-
-
-class ScreensaverEvent(Enum):
-    NONE = 0
-    ACTIVATED = 1
-    DEACTIVATED = 2
-
-
-class ScreensaverThread(LedInstructionProvidingThread):
-
-    def run(self):
-        process = subprocess.Popen(["xscreensaver-command", "--watch"], stdout=subprocess.PIPE)
-        while process.poll() is None:
-            line = process.stdout.readline()
-            result = self.process_event(line.decode("utf-8"))
-            if result is ScreensaverEvent.ACTIVATED:
-                self._led_on()
-                log("Screensaver activated. Turn LED on.")
-            elif result is ScreensaverEvent.DEACTIVATED:
-                self._led_off()
-                log("Screensaver deactivated. Turn LED off.")
-            else:
-                pass  # Nothing to do here.
-
-    def process_event(self, text: str) -> ScreensaverEvent:
-        return ScreensaverEvent.DEACTIVATED if text.find("UNBLANK") > -1 \
-            else ScreensaverEvent.ACTIVATED if text.find("BLANK") > -1 \
-            else ScreensaverEvent.NONE
+from kiosk_gpio.screensaver import ScreensaverThread
 
 
 class MotionSensorThread(Thread):

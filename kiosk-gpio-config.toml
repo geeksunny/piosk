@@ -22,3 +22,7 @@ AUTO_MINIMUM = 50
 AUTO_MAXIMUM = 255
 AUTO_STEP_COUNT = 15
 MANUAL_STEPS = [ 50, 100, 150, 200, 250 ]
+
+[shutdown]
+SCRIPT_CMD = 'python ./shutdown_menu.py'
+TIMEOUT = 5.0

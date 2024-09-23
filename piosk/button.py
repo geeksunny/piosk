@@ -3,9 +3,9 @@ import time
 from easing_functions import ExponentialEaseIn
 from gpiozero import Button
 
-from kiosk_gpio.brightness import set_next_manual_step
-from kiosk_gpio.config import CONFIG
-from kiosk_gpio.led import LedInstructionProvidingThread, BlinkSequenceEvent
+from piosk.brightness import set_next_manual_step
+from piosk.config import CONFIG
+from piosk.led import LedInstructionProvidingThread, BlinkSequenceEvent
 
 
 class ButtonThread(LedInstructionProvidingThread):

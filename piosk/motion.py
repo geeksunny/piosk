@@ -3,8 +3,8 @@ from threading import Thread, Event
 
 from gpiozero import MotionSensor
 
-from kiosk_gpio.brightness import turn_screen_on
-from kiosk_gpio.config import CONFIG
+from piosk.brightness import turn_screen_on
+from piosk.config import CONFIG
 
 
 _DISPLAY_SLEEPING: bool = False

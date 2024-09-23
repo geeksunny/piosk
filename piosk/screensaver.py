@@ -1,9 +1,9 @@
 import subprocess
 from enum import Enum
 
-from kiosk_gpio.brightness import turn_screen_off, turn_screen_on
-from kiosk_gpio.led import LedInstructionProvidingThread
-from kiosk_gpio.util import log
+from piosk.brightness import turn_screen_off, turn_screen_on
+from piosk.led import LedInstructionProvidingThread
+from piosk.util import log
 
 
 class ScreensaverEvent(Enum):

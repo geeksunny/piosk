@@ -5,7 +5,7 @@ from threading import Thread, Event
 
 import pygubu
 
-from kiosk_gpio.config import CONFIG
+from piosk.config import CONFIG
 
 
 PROJECT_PATH = pathlib.Path(__file__).parent

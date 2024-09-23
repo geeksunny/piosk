@@ -6,9 +6,9 @@ from threading import Event, Lock
 from easing_functions.easing import EasingBase, LinearInOut
 from gpiozero import LightSensor
 
-from kiosk_gpio.config import CONFIG
-from kiosk_gpio.led import LedInstructionProvidingThread
-from kiosk_gpio.motion import wake_motion_sensor
+from piosk.config import CONFIG
+from piosk.led import LedInstructionProvidingThread
+from piosk.motion import wake_motion_sensor
 
 
 class Brightness(Enum):

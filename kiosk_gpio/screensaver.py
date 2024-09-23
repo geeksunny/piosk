@@ -1,7 +1,7 @@
 import subprocess
 from enum import Enum
 
-from kiosk_gpio.brightness import Brightness, set_screen_power
+from kiosk_gpio.brightness import turn_screen_off, turn_screen_on
 from kiosk_gpio.led import LedInstructionProvidingThread
 from kiosk_gpio.util import log
 
@@ -22,11 +22,11 @@ class ScreensaverThread(LedInstructionProvidingThread):
             if result is ScreensaverEvent.ACTIVATED:
                 log("Screensaver activated. Turn LED on.")
                 self._led_on()
-                set_screen_power(Brightness.OFF)
+                turn_screen_off()
             elif result is ScreensaverEvent.DEACTIVATED:
                 log("Screensaver deactivated. Turn LED off.")
                 self._led_off()
-                set_screen_power(Brightness.ON)
+                turn_screen_on()
             else:
                 pass  # Nothing to do here.
 

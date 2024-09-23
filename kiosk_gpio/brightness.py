@@ -8,6 +8,7 @@ from gpiozero import LightSensor
 
 from kiosk_gpio.config import CONFIG
 from kiosk_gpio.led import LedInstructionProvidingThread
+from kiosk_gpio.motion import wake_motion_sensor
 
 
 class Brightness(Enum):
@@ -169,6 +170,17 @@ def set_manual_brightness(val: int, smooth: bool = False, ease_cls: type[EasingB
 def set_screen_power(state: Brightness):
     with _BACKLIGHT_LOCK:
         _BACKLIGHT.power_value = state
+
+
+def turn_screen_on():
+    with _BACKLIGHT_LOCK:
+        _BACKLIGHT.power_value = Brightness.ON
+
+
+def turn_screen_off():
+    with _BACKLIGHT_LOCK:
+        _BACKLIGHT.power_value = Brightness.OFF
+    wake_motion_sensor()
 
 
 __manual_step_index: int = 0

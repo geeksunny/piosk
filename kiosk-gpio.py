@@ -10,17 +10,6 @@ from kiosk_gpio.config import CONFIG
 from kiosk_gpio.screensaver import ScreensaverThread
 
 
-class MotionSensorThread(Thread):
-
-    def __init__(self):
-        super(MotionSensorThread, self).__init__()
-        self._gpio_motionsensor = MotionSensor(CONFIG['PIN_MOTIONSENSOR'])
-
-    def run(self):
-        # TODO: If screen is off and motion sensor picks up activity, wake screen.
-        pass
-
-
 def main():
     ssaver = ScreensaverThread()
     button = ButtonThread()

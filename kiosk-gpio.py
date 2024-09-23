@@ -1,30 +1,24 @@
 #!/usr/bin/env python
 import os
 import sys
-from threading import Thread
 
-from gpiozero import MotionSensor
-
-from kiosk_gpio.button import ButtonThread
+from kiosk_gpio.brightness import start_auto_brightness
+from kiosk_gpio.button import start_button_thread, join_button_thread
 from kiosk_gpio.config import CONFIG
-from kiosk_gpio.screensaver import ScreensaverThread
+from kiosk_gpio.motion import start_motion_sensor_thread, join_motion_sensor_thread
+from kiosk_gpio.screensaver import start_screensaver_thread, join_screensaver_thread
 
 
 def main():
-    ssaver = ScreensaverThread()
-    button = ButtonThread()
-    # brightness = BrightnessControlThread()
-    # motion_sensor = MotionSensorThread()
+    start_screensaver_thread()
+    start_button_thread()
+    start_motion_sensor_thread()
+    if CONFIG['brightness']['AUTO_ENABLED'] is True:
+        start_auto_brightness()
 
-    ssaver.start()
-    button.start()
-    # brightness.start()
-    # motion_sensor.start()
-
-    ssaver.join()
-    button.join()
-    # brightness.join()
-    # motion_sensor.join()
+    join_screensaver_thread()
+    join_button_thread()
+    join_motion_sensor_thread()
 
 
 if __name__ == '__main__':

@@ -51,3 +51,14 @@ class ButtonThread(LedInstructionProvidingThread):
                     if self._time_held() >= CONFIG['button']['MAX_HOLD_TIME_SECONDS']:
                         self._led_on()
                         print(f'TODO: EXECUTE `{CONFIG['shutdown']['SCRIPT_CMD']}`')
+
+
+_BUTTON_THREAD: ButtonThread
+
+
+def start_button_thread():
+    _BUTTON_THREAD = ButtonThread()
+    _BUTTON_THREAD.start()
+
+def join_button_thread():
+    _BUTTON_THREAD.join()

@@ -34,3 +34,15 @@ class ScreensaverThread(LedInstructionProvidingThread):
         return ScreensaverEvent.DEACTIVATED if text.find("UNBLANK") > -1 \
             else ScreensaverEvent.ACTIVATED if text.find("BLANK") > -1 \
             else ScreensaverEvent.NONE
+
+
+_SCREENSAVER_THREAD: ScreensaverThread
+
+
+def start_screensaver_thread():
+    _SCREENSAVER_THREAD = ScreensaverThread()
+    _SCREENSAVER_THREAD.start()
+
+
+def join_screensaver_thread():
+    _SCREENSAVER_THREAD.join()

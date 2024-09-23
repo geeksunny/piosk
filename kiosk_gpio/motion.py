@@ -34,3 +34,11 @@ _MOTION_THREAD: MotionSensorThread(_MOTION_EVENT)
 def start_motion_sensor_thread():
     _MOTION_THREAD = MotionSensorThread(_MOTION_EVENT)
     _MOTION_THREAD.start()
+
+
+def wake_motion_sensor():
+    _MOTION_EVENT.set()
+
+
+def join_motion_sensor_thread():
+    _MOTION_THREAD.join()

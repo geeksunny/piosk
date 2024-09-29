@@ -57,3 +57,25 @@ def start_screensaver_thread():
 def join_screensaver_thread():
     global _SCREENSAVER_THREAD
     _SCREENSAVER_THREAD.join()
+
+
+def activate_screensaver():
+    """
+    Engage the screensaver and put the display to sleep.
+    """
+    process = subprocess.Popen(
+        ["xscreensaver-command", "--display",
+         CONFIG['screensaver']['DISPLAY'], "--activate"],
+        stdout=subprocess.PIPE
+    )
+
+
+def deactivate_screensaver():
+    """
+    Wake the display if the screensaver is activated.
+    """
+    process = subprocess.Popen(
+        ["xscreensaver-command", "--display",
+         CONFIG['screensaver']['DISPLAY'], "--deactivate"],
+        stdout=subprocess.PIPE
+    )

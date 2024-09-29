@@ -3,7 +3,7 @@ from threading import Thread, Event
 
 from gpiozero import MotionSensor
 
-from piosk.brightness import turn_screen_on
+import piosk.brightness
 from piosk.config import CONFIG
 
 
@@ -24,7 +24,7 @@ class MotionSensorThread(Thread):
             self._event.wait()
             time.sleep(15)  # wait a short period before activating the motion sensor.
             self._gpio_motion_sensor.wait_for_active()
-            turn_screen_on()
+            piosk.brightness.turn_screen_on()
             self._event.clear()
 
 

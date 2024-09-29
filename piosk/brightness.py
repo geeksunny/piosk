@@ -8,7 +8,7 @@ from gpiozero import LightSensor
 
 from piosk.config import CONFIG
 from piosk.led import LedInstructionProvidingThread
-from piosk.motion import wake_motion_sensor
+import piosk.motion
 
 
 class Brightness(Enum):
@@ -180,7 +180,7 @@ def turn_screen_on():
 def turn_screen_off():
     with _BACKLIGHT_LOCK:
         _BACKLIGHT.power_value = Brightness.OFF
-    wake_motion_sensor()
+    piosk.motion.wake_motion_sensor()
 
 
 __manual_step_index: int = 0

@@ -27,6 +27,11 @@ def _write_value(path: Path, value):
 
 
 __current_brightness = -1
+__power_state: Brightness = Brightness.ON
+
+
+def screen_is_on():
+    return __power_state == Brightness.ON
 
 
 class Backlight(StrEnum):
@@ -88,6 +93,7 @@ class Backlight(StrEnum):
     @power_value.setter
     def power_value(self, value):
         _write_value(self.power, value)
+        __power_state = value
 
 
 _BACKLIGHT = Backlight.detect_backlight()
@@ -97,9 +103,10 @@ GPIO_LIGHTSENSOR = LightSensor(CONFIG['PIN_LIGHTSENSOR'])
 
 class AutoBrightnessThread(LedInstructionProvidingThread):
 
-    def __init__(self, event: Event):
+    def __init__(self, polling_event: Event, screen_off_event: Event):
         super(AutoBrightnessThread, self).__init__()
-        self._event = event
+        self._polling_event = polling_event
+        self._screen_off_event = screen_off_event
         with _BACKLIGHT_LOCK:
             self._brightness_value = _BACKLIGHT.brightness_value
         self._sensor_reading = -1.0
@@ -129,9 +136,14 @@ class AutoBrightnessThread(LedInstructionProvidingThread):
 
     def run(self):
         while True:
+            if not screen_is_on():
+                # Wait until the screen is turned back on.
+                self._screen_off_event.wait()
+                self._screen_off_event.clear()
             self._set_brightness(self.get_auto_brightness())
-            self._event.wait(CONFIG['brightness']['POLL_TIME_SECONDS'])
-            if self._event.is_set() is True:
+            self._polling_event.wait(CONFIG['brightness']['POLL_TIME_SECONDS'])
+            if self._polling_event.is_set() is True:
+                # Break the loop and finish the thread.
                 break
 
         # TODO: auto brightness, monitor lightsensor reading and change backlight level accordingly.
@@ -144,42 +156,63 @@ class AutoBrightnessThread(LedInstructionProvidingThread):
         #    (customized in config?)
 
 
-_THREAD_EVENT: Event = Event()
-_THREAD_AUTO_BRIGHTNESS: AutoBrightnessThread = AutoBrightnessThread(_THREAD_EVENT)
+_THREAD_POLLING_EVENT: Event = Event()
+_THREAD_SCREEN_OFF_EVENT: Event = Event()
+_THREAD_AUTO_BRIGHTNESS: AutoBrightnessThread = AutoBrightnessThread(_THREAD_POLLING_EVENT, _THREAD_SCREEN_OFF_EVENT)
 
 
 def start_auto_brightness():
     global _THREAD_AUTO_BRIGHTNESS
     if _THREAD_AUTO_BRIGHTNESS is None or not _THREAD_AUTO_BRIGHTNESS.is_alive():
-        _THREAD_AUTO_BRIGHTNESS = AutoBrightnessThread(_THREAD_EVENT)
+        _THREAD_POLLING_EVENT.clear()
+        _THREAD_SCREEN_OFF_EVENT.clear()
+        _THREAD_AUTO_BRIGHTNESS = AutoBrightnessThread(_THREAD_POLLING_EVENT, _THREAD_SCREEN_OFF_EVENT)
         _THREAD_AUTO_BRIGHTNESS.start()
 
 
 def stop_auto_brightness():
-    _THREAD_EVENT.set()
+    _THREAD_POLLING_EVENT.set()
 
 
 def set_manual_brightness(val: int, smooth: bool = False, ease_cls: type[EasingBase] = LinearInOut):
     with _BACKLIGHT_LOCK:
         if smooth is True:
-                _BACKLIGHT.set_brightness_smoothed(val, ease_cls)
+            _BACKLIGHT.set_brightness_smoothed(val, ease_cls)
         else:
             _BACKLIGHT.brightness_value = val
 
 
 def set_screen_power(state: Brightness):
+    global __power_state
+    if __power_state == state:
+        # Abort if state will not change.
+        return
     with _BACKLIGHT_LOCK:
-        _BACKLIGHT.power_value = state
+        __power_state = state
+        _BACKLIGHT.power_value = state.value
 
 
 def turn_screen_on():
+    global __power_state
+    if __power_state == Brightness.ON:
+        # Abort if the screen is already on.
+        return
     with _BACKLIGHT_LOCK:
-        _BACKLIGHT.power_value = Brightness.ON
+        __power_state = Brightness.ON
+        _BACKLIGHT.power_value = Brightness.ON.value
+        if _THREAD_AUTO_BRIGHTNESS.is_alive() is True and _THREAD_SCREEN_OFF_EVENT.is_set() is False:
+            # Wake brightness thread if it is alive and waiting on the event.
+            _THREAD_SCREEN_OFF_EVENT.set()
 
 
 def turn_screen_off():
+    global __power_state
+    if __power_state == Brightness.OFF:
+        # Abort if the screen is already off.
+        return
     with _BACKLIGHT_LOCK:
-        _BACKLIGHT.power_value = Brightness.OFF
+        __power_state = Brightness.OFF
+        _BACKLIGHT.power_value = Brightness.OFF.value
     piosk.motion.wake_motion_sensor()
 
 

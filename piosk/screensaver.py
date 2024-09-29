@@ -1,7 +1,9 @@
 import subprocess
+import time
 from enum import Enum
 
 from piosk.brightness import turn_screen_off, turn_screen_on
+from piosk.config import CONFIG
 from piosk.led import LedInstructionProvidingThread
 from piosk.util import log
 
@@ -15,13 +17,20 @@ class ScreensaverEvent(Enum):
 class ScreensaverThread(LedInstructionProvidingThread):
 
     def run(self):
-        process = subprocess.Popen(["xscreensaver-command", "--watch"], stdout=subprocess.PIPE)
+        process = subprocess.Popen(
+            ["xscreensaver-command", "--display",
+             CONFIG['screensaver']['DISPLAY'], "--watch"],
+            stdout=subprocess.PIPE
+        )
         while process.poll() is None:
             line = process.stdout.readline()
             result = self.process_event(line.decode("utf-8"))
             if result is ScreensaverEvent.ACTIVATED:
                 log("Screensaver activated. Turn LED on.")
                 self._led_on()
+                # TODO: Parse screen fade value from .xscreensaver config file. Use for power-off delay for fade.
+                #  (Add 0.5 seconds to delay so fade animation can complete.)
+                time.sleep(1.5)
                 turn_screen_off()
             elif result is ScreensaverEvent.DEACTIVATED:
                 log("Screensaver deactivated. Turn LED off.")
@@ -40,9 +49,11 @@ _SCREENSAVER_THREAD: ScreensaverThread
 
 
 def start_screensaver_thread():
+    global _SCREENSAVER_THREAD
     _SCREENSAVER_THREAD = ScreensaverThread()
     _SCREENSAVER_THREAD.start()
 
 
 def join_screensaver_thread():
+    global _SCREENSAVER_THREAD
     _SCREENSAVER_THREAD.join()

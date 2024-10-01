@@ -56,7 +56,7 @@ class SequencedPWMLED(PWMLED):
         :param n: Number of times to repeat the sequence, or None to perform indefinitely until another thread
                 sets a new value.
         """
-        if n <= 0:
+        if n is not None and n <= 0:
             return
         sequence = []
         prev_value = initial_value if initial_value is not None else self.value
@@ -64,6 +64,7 @@ class SequencedPWMLED(PWMLED):
             events = (events,)
         for event in events:
             value_steps = []
+            delay = None
             if event.fade_time > 0 and prev_value != event.value:
                 frame_count = int(event.fps * event.fade_time)
                 delay = 1 / event.fps
@@ -78,11 +79,15 @@ class SequencedPWMLED(PWMLED):
             cycle(sequence) if n is None else
             chain.from_iterable(repeat(sequence, n))
         )
+        breaking = False
         for delay, values in sequence:
             for value in values:
                 self._write(value)
                 if self._blink_thread.stopping.wait(delay):
+                    breaking = True
                     break
+            if breaking is True:
+                break
             print('')
 
 
@@ -91,17 +96,16 @@ GPIO_LED = SequencedPWMLED(CONFIG['PIN_PWM_LED'])
 
 class LedInstructionProvidingThread(Thread):
 
-
     def _led_sequence(self, events: tuple[BlinkSequenceEvent, ...] | BlinkSequenceEvent,
                       initial_value: float | None = None, n: int | None = 1):
         GPIO_LED.sequence(events, initial_value, n, background=True)
 
     def _led_on(self, on_time: float | None = None, fade_time: float = 0, value: float = CONFIG['led']['LED_MAX']):
-        n = 1 if on_time > 0 else None
+        n = 1 if on_time is not None and on_time > 0 else None
         GPIO_LED.sequence(BlinkSequenceEvent(value, on_time, fade_time), n=n, background=True)
 
     def _led_off(self, off_time: float | None = None, fade_time: float = 0):
-        n = 1 if off_time > 0 else None
+        n = 1 if off_time is not None and off_time > 0 else None
         GPIO_LED.sequence(BlinkSequenceEvent(0, off_time, fade_time), n=n, background=True)
 
     def _led_blink(self, on_time: float | None = None, off_time: float | None = None,

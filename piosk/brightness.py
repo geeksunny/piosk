@@ -122,7 +122,9 @@ class AutoBrightnessThread(LedInstructionProvidingThread):
                 if self._smooth is True:
                     # TODO: Make the easing method configurable
                     _BACKLIGHT.set_brightness_smoothed(self._brightness_value, LinearInOut)
-                self._brightness_value = _BACKLIGHT.brightness_value = brightness_value
+                else:
+                    _BACKLIGHT.brightness_value = brightness_value
+                self._brightness_value = brightness_value
 
     def get_auto_brightness(self) -> float | None:
         sensor_reading = GPIO_LIGHTSENSOR.value
@@ -145,15 +147,6 @@ class AutoBrightnessThread(LedInstructionProvidingThread):
             if self._polling_event.is_set() is True:
                 # Break the loop and finish the thread.
                 break
-
-        # TODO: auto brightness, monitor lightsensor reading and change backlight level accordingly.
-        # TODO: manual brightness, cycle through steps
-        # TODO: Double click button to swap between modes.
-        #  manual mode: Fade LED down with brightness down steps. step on each click.
-        #    Step count and values can be declared in config file.
-        #  auto mode: Quick pulse of LED when activated.
-        #  mode / value change: LED turns on to the representing state for 1 second.
-        #    (customized in config?)
 
 
 _THREAD_POLLING_EVENT: Event = Event()

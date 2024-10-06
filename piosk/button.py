@@ -1,4 +1,5 @@
 import time
+from threading import Event
 
 from easing_functions import ExponentialEaseIn
 from gpiozero import Button
@@ -6,51 +7,56 @@ from gpiozero import Button
 from piosk.brightness import set_next_manual_step
 from piosk.config import CONFIG
 from piosk.led import LedInstructionProvidingThread, BlinkSequenceEvent
+from piosk.screensaver import deactivate_screensaver
 
 
 class ButtonThread(LedInstructionProvidingThread):
 
     def __init__(self):
         super(ButtonThread, self).__init__()
+        self._event = Event()
         self._gpio_button = Button(CONFIG['PIN_BUTTON'])
-        self._is_pressed = False
-        self._last_state_change = None
-        self._is_led_active = False
+        self._gpio_button.hold_time = CONFIG['button']['MIN_HOLD_TIME_SECONDS']
+        self._hold_start: float | None = None
 
-    def _set_state(self, new_value: bool):
-        if self._is_pressed != new_value:
-            self._is_pressed = new_value
-            self._last_state_change = time.time()
+        def when_pressed():
+            self._led_on()
+            deactivate_screensaver()
 
-    def _time_held(self):
-        return time.time() - self._last_state_change
+        self._gpio_button.when_pressed = when_pressed
+
+        def when_held():
+            self._hold_start = time.time()
+            # Begin LED strobe
+            events = (BlinkSequenceEvent(1, 0, (1.0 - self._gpio_button.held_time), easing=ExponentialEaseIn),)
+            reset = BlinkSequenceEvent(0)
+            strobe = BlinkSequenceEvent(1, 0, 1, easing=ExponentialEaseIn)
+            for i in range(0, int(round((CONFIG['button']['MAX_HOLD_TIME_SECONDS'] - 1)))):
+                events += (reset, strobe)
+            self._led_sequence(events, 0)
+
+        self._gpio_button.when_held = when_held
+
+        def when_released():
+            self._led_off()
+            if self._hold_start is None:
+                set_next_manual_step()
+            else:
+                time_held = time.time() - self._hold_start
+                self._hold_start = None
+                if time_held < CONFIG['button']['MAX_HOLD_TIME_SECONDS']:
+                    print('TODO: Switch between auto and manual brightness modes.')
+                else:
+                    print(f"TODO: EXECUTE `{CONFIG['shutdown']['SCRIPT_CMD']}`")
+
+        self._gpio_button.when_released = when_released
+
+    def stop(self):
+        self._event.set()
 
     def run(self):
-        while True:
-            if self._is_pressed is False:
-                # Check for new press
-                if self._gpio_button.is_pressed is True:
-                    self._set_state(True)
-            else:  # if self.is_pressed is True:
-                if self._gpio_button.is_pressed is False:
-                    self._led_off()
-                    self._is_led_active = False
-                    self._set_state(False)
-                elif self._is_led_active is not True:
-                    if self._time_held() >= CONFIG['button']['MIN_HOLD_TIME_SECONDS']:
-                        self._is_led_active = True
-                        event = BlinkSequenceEvent(1, 0, 1, easing=ExponentialEaseIn)
-                        events = (BlinkSequenceEvent(1, 0, (1.0 - self._time_held()), easing=ExponentialEaseIn),)
-                        for i in range(0, CONFIG['button']['MAX_HOLD_TIME_SECONDS'] - 1):
-                            events += (event,)
-                        self._led_sequence(events, 0)
-                    else:
-                        self._led_on()
-                        set_next_manual_step()
-                else:
-                    if self._time_held() >= CONFIG['button']['MAX_HOLD_TIME_SECONDS']:
-                        self._led_on()
-                        print(f'TODO: EXECUTE `{CONFIG['shutdown']['SCRIPT_CMD']}`')
+        # Keep thread alive for button callbacks.
+        self._event.wait()
 
 
 _BUTTON_THREAD: ButtonThread
@@ -59,6 +65,7 @@ _BUTTON_THREAD: ButtonThread
 def start_button_thread():
     _BUTTON_THREAD = ButtonThread()
     _BUTTON_THREAD.start()
+
 
 def join_button_thread():
     _BUTTON_THREAD.join()

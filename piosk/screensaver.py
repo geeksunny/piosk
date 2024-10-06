@@ -1,8 +1,9 @@
 import subprocess
 import time
 from enum import Enum
+from threading import Lock
 
-from piosk.brightness import turn_screen_off, turn_screen_on
+import piosk.brightness
 from piosk.config import CONFIG
 from piosk.led import LedInstructionProvidingThread
 from piosk.util import log
@@ -14,12 +15,21 @@ class ScreensaverEvent(Enum):
     DEACTIVATED = 2
 
 
+_CURRENT_STATUS: ScreensaverEvent = ScreensaverEvent.DEACTIVATED
+_STATUS_LOCK = Lock()
+
+
+def update_status(status: ScreensaverEvent):
+    global _CURRENT_STATUS
+    with _STATUS_LOCK:
+        _CURRENT_STATUS = status
+
+
 class ScreensaverThread(LedInstructionProvidingThread):
 
     def run(self):
         process = subprocess.Popen(
-            ["xscreensaver-command", "--display",
-             CONFIG['screensaver']['DISPLAY'], "--watch"],
+            ["xscreensaver-command", "--display", CONFIG['screensaver']['DISPLAY'], "--watch"],
             stdout=subprocess.PIPE
         )
         while process.poll() is None:
@@ -28,14 +38,16 @@ class ScreensaverThread(LedInstructionProvidingThread):
             if result is ScreensaverEvent.ACTIVATED:
                 log("Screensaver activated. Turn LED on.")
                 self._led_on()
+                update_status(result)
                 # TODO: Parse screen fade value from .xscreensaver config file. Use for power-off delay for fade.
                 #  (Add 0.5 seconds to delay so fade animation can complete.)
                 time.sleep(1.5)
-                turn_screen_off()
+                piosk.brightness.turn_screen_off()
             elif result is ScreensaverEvent.DEACTIVATED:
                 log("Screensaver deactivated. Turn LED off.")
                 self._led_off()
-                turn_screen_on()
+                update_status(result)
+                piosk.brightness.turn_screen_on()
             else:
                 pass  # Nothing to do here.
 
@@ -59,23 +71,32 @@ def join_screensaver_thread():
     _SCREENSAVER_THREAD.join()
 
 
+def get_status() -> ScreensaverEvent:
+    with _STATUS_LOCK:
+        return _CURRENT_STATUS
+
+
 def activate_screensaver():
     """
     Engage the screensaver and put the display to sleep.
     """
-    process = subprocess.Popen(
-        ["xscreensaver-command", "--display",
-         CONFIG['screensaver']['DISPLAY'], "--activate"],
-        stdout=subprocess.PIPE
-    )
+    if get_status() != ScreensaverEvent.ACTIVATED:
+        subprocess.Popen(
+            ["xscreensaver-command", "--display", CONFIG['screensaver']['DISPLAY'], "--activate"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
 
 
 def deactivate_screensaver():
     """
     Wake the display if the screensaver is activated.
     """
-    process = subprocess.Popen(
-        ["xscreensaver-command", "--display",
-         CONFIG['screensaver']['DISPLAY'], "--deactivate"],
-        stdout=subprocess.PIPE
-    )
+    # TODO: Should this try to poke the screensaver to reset the idle time?
+    #  In case it goes to sleep while pressing buttons.
+    if get_status() != ScreensaverEvent.DEACTIVATED:
+        subprocess.Popen(
+            ["xscreensaver-command", "--display", CONFIG['screensaver']['DISPLAY'], "--deactivate"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )

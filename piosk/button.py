@@ -4,10 +4,10 @@ from threading import Event
 from easing_functions import ExponentialEaseIn
 from gpiozero import Button
 
+import piosk.screensaver
 from piosk.brightness import set_next_manual_step
 from piosk.config import CONFIG
 from piosk.led import LedInstructionProvidingThread, BlinkSequenceEvent
-from piosk.screensaver import deactivate_screensaver
 
 
 class ButtonThread(LedInstructionProvidingThread):
@@ -21,7 +21,7 @@ class ButtonThread(LedInstructionProvidingThread):
 
         def when_pressed():
             self._led_on()
-            deactivate_screensaver()
+            piosk.screensaver.deactivate_screensaver()
 
         self._gpio_button.when_pressed = when_pressed
 

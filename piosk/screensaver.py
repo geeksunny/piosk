@@ -4,6 +4,7 @@ from enum import Enum
 from threading import Lock
 
 import piosk.brightness
+import piosk.motion
 from piosk.config import CONFIG
 from piosk.led import LedInstructionProvidingThread
 from piosk.util import log
@@ -43,6 +44,7 @@ class ScreensaverThread(LedInstructionProvidingThread):
                 #  (Add 0.5 seconds to delay so fade animation can complete.)
                 time.sleep(1.5)
                 piosk.brightness.turn_screen_off()
+                piosk.motion.wake_motion_sensor()
             elif result is ScreensaverEvent.DEACTIVATED:
                 log("Screensaver deactivated. Turn LED off.")
                 self._led_off()

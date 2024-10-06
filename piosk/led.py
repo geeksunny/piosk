@@ -88,7 +88,6 @@ class SequencedPWMLED(PWMLED):
                     break
             if breaking is True:
                 break
-            print('')
 
 
 GPIO_LED = SequencedPWMLED(CONFIG['PIN_PWM_LED'])

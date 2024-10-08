@@ -3,6 +3,9 @@ PIN_BUTTON = 27
 PIN_LIGHTSENSOR = 0
 PIN_MOTIONSENSOR = 4
 
+[motion]
+WAKE_DELAY_SECONDS = 15
+
 [screensaver]
 DISPLAY = ':0.0'
 

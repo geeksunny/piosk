@@ -23,7 +23,8 @@ class MotionSensorThread(Thread):
             # This thread will be awoken when the screen has been turned off.
             log('Motion sensor sleeping.')
             self._event.wait()
-            time.sleep(15)  # wait a short period before activating the motion sensor.
+            log(f"Motion sensor will wake up in {CONFIG['motion']['WAKE_DELAY_SECONDS']} seconds.")
+            time.sleep(CONFIG['motion']['WAKE_DELAY_SECONDS'])  # wait a short period before activating the motion sensor.
             log('Motion sensor waking up.')
             _GPIO_MOTIONSENSOR.wait_for_active()
             log('Motion sensor detected movement. Waking screen.')

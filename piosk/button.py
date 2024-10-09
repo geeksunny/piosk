@@ -18,10 +18,11 @@ class ButtonThread(LedInstructionProvidingThread):
         self._gpio_button = Button(CONFIG['PIN_BUTTON'])
         self._gpio_button.hold_time = CONFIG['button']['MIN_HOLD_TIME_SECONDS']
         self._hold_start: float | None = None
+        self._woke_up: bool = False
 
         def when_pressed():
             self._led_on()
-            piosk.screensaver.deactivate_screensaver()
+            self._woke_up = piosk.screensaver.poke_screensaver()
 
         self._gpio_button.when_pressed = when_pressed
 
@@ -40,7 +41,8 @@ class ButtonThread(LedInstructionProvidingThread):
         def when_released():
             self._led_off()
             if self._hold_start is None:
-                set_next_manual_step()
+                if not self._woke_up:
+                    set_next_manual_step(CONFIG['brightness']['SMOOTH'])
             else:
                 time_held = time.time() - self._hold_start
                 self._hold_start = None

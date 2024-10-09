@@ -90,15 +90,17 @@ def activate_screensaver():
         )
 
 
-def deactivate_screensaver():
+def poke_screensaver():
     """
-    Wake the display if the screensaver is activated.
+    Wake the display if the screensaver is activated or reset the timeout for
+    the screensaver to activate itself.
+
+    :return: True if the screensaver was woken up by this action.
     """
-    # TODO: Should this try to poke the screensaver to reset the idle time?
-    #  In case it goes to sleep while pressing buttons.
-    if get_status() != ScreensaverEvent.DEACTIVATED:
-        subprocess.Popen(
-            ["xscreensaver-command", "--display", CONFIG['screensaver']['DISPLAY'], "--deactivate"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
+    status = get_status()
+    subprocess.Popen(
+        ["xscreensaver-command", "--display", CONFIG['screensaver']['DISPLAY'], "--deactivate"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    return status == ScreensaverEvent.ACTIVATED

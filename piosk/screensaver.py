@@ -50,6 +50,7 @@ class ScreensaverThread(LedInstructionProvidingThread):
                 self._led_off()
                 update_status(result)
                 piosk.brightness.turn_screen_on()
+                piosk.motion.cancel_motion_monitoring()
             else:
                 pass  # Nothing to do here.
 

@@ -72,14 +72,14 @@ class Backlight(StrEnum):
     def set_brightness_smoothed(self, value: int, ease_cls: type[EasingBase]):
         # TODO: Should this have a background option?
         current_value = self.brightness_value
-        easing = ease_cls(current_value, value, CONFIG['brightness']['SMOOTH_DURATION_SECONDS'])
+        easing = ease_cls(current_value, value, CONFIG['brightness']['SMOOTH_FPS'])
         delay = CONFIG['brightness']['SMOOTH_DURATION_SECONDS'] / CONFIG['brightness']['SMOOTH_FPS']
         frame_count = CONFIG['brightness']['SMOOTH_DURATION_SECONDS'] * CONFIG['brightness']['SMOOTH_FPS']
         global __current_brightness
-        for i in range(frame_count):
+        for i in range(int(round(frame_count)) + 1):
             val = easing(i)
             if __current_brightness != val:
-                self.brightness_value = val
+                self.brightness_value = int(val)
             time.sleep(delay)
 
     @property
